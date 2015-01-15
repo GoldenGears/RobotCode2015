@@ -5,15 +5,20 @@
 //*************
 
 // Tyler Robbins - 1-11-15 - First Commit of Robot class. Wheels, compressor, and solenoid.
-
+// Conlon Meek - 1-14-15 - Added individual Talon objects to pass to the RobotDrive classes.
 #include "WPILib.h"
 //#include "LiveWindow.h"
 #include "IterativeRobot.h"
 #include "Compressor.h"
-
+#include "Talon.h"
 class Robot: public IterativeRobot
 {
-
+	Talon frontLeft;
+	Talon frontRight;
+	Talon midLeft;
+	Talon midRight;
+	Talon backLeft;
+	Talon backRight;
 	RobotDrive myRobot; // robot drive system
 	RobotDrive driveFront;
 	RobotDrive driveMiddle;
@@ -29,13 +34,19 @@ public:
 	Compressor *c = new Compressor(0);
 	Robot() :
 		myRobot(0, 3),	// these must be initialized in the same order
-		driveFront(0,3),
-		driveMiddle(1,4),
-		driveBack(2,5),
+		frontLeft(3),
+		frontRight(0),
+		midLeft(4),
+		midRight(1),
+		backLeft(5),
+		backRight(2),
+		driveFront(frontRight,frontLeft),
+		driveMiddle(midRight,midLeft),
+		driveBack(backRight,backLeft),
 		stick(0),		// as they are declared above.
 		lw(NULL),
 		gearShift(0),
-		solButt(&stick,1)
+		solButt(&stick,2)
 		//c(0,0),
 		//autoLoopCounter(0)
 	{
