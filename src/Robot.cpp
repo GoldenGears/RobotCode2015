@@ -15,14 +15,12 @@ class Robot: public IterativeRobot
 {
 	Talon frontLeft;
 	Talon frontRight;
-	Talon midLeft;
-	Talon midRight;
 	Talon backLeft;
 	Talon backRight;
-	RobotDrive myRobot; // robot drive system
-	RobotDrive driveFront;
-	RobotDrive driveMiddle;
-	RobotDrive driveBack;
+	RobotDrive drive; // robot drive system
+	//RobotDrive driveFront;
+	//RobotDrive driveMiddle;
+	//RobotDrive driveBack;
 	Joystick stick; // only joystick
 	LiveWindow *lw;
 	Solenoid gearShift;
@@ -33,27 +31,29 @@ class Robot: public IterativeRobot
 public:
 	Compressor *c = new Compressor(0);
 	Robot() :
-		myRobot(0, 3),	// these must be initialized in the same order
-		frontLeft(3),
-		frontRight(0),
-		midLeft(4),
-		midRight(1),
-		backLeft(5),
-		backRight(2),
-		driveFront(frontRight,frontLeft),
-		driveMiddle(midRight,midLeft),
-		driveBack(backRight,backLeft),
+		frontLeft(0),
+		frontRight(2),
+		//midLeft(4),
+		//midRight(1),
+		backLeft(1),
+		backRight(3),
+		//driveFront(frontRight,frontLeft),
+		//driveMiddle(midRight,midLeft),
+		//driveBack(backRight,backLeft),
+		drive(frontLeft, backLeft, frontRight, backRight),
 		stick(0),		// as they are declared above.
 		lw(NULL),
 		gearShift(0),
 		solButt(&stick,2)
-		//c(0,0),
-		//autoLoopCounter(0)
 	{
-		myRobot.SetExpiration(0.1);
+
+		drive.SetExpiration(0.1);
 		c->Start();
 
-		//DriverStation *ds = new DriverStation();
+		drive.SetInvertedMotor(RobotDrive::MotorType::kFrontLeftMotor,true);
+		drive.SetInvertedMotor(RobotDrive::MotorType::kRearLeftMotor,true);
+		// drive.SetInvertedMotor(RobotDrive::MotorType::kFrontRightMotor,true);
+		// drive.SetInvertedMotor(RobotDrive::MotorType::kRearRightMotor,true);
 	}
 
 private:
@@ -125,9 +125,12 @@ private:
 		z*=throttle;
 		turn*=throttle;
 
-		driveFront.ArcadeDrive(y,turn);
-		driveMiddle.ArcadeDrive(y,turn);
-		driveBack.ArcadeDrive(y,turn);
+		//driveFront.ArcadeDrive(y,turn);
+		//driveMiddle.ArcadeDrive(y,turn);
+		//driveBack.ArcadeDrive(y,turn);
+
+		drive.MecanumDrive_Cartesian(x,y,turn);
+
 	}
 
 	void SystemCheck(){
