@@ -7,6 +7,9 @@
 // Tyler Robbins - 1-11-15 - First Commit of Robot class. Wheels, compressor, and solenoid.
 // Conlon Meek - 1-14-15 - Added individual Talon objects to pass to the RobotDrive classes.
 // Tyler Robbins - 1-22-15 - Removed useless include statements. Added an Elevator talon. Added an encoder. Added Autonomous code. Added a method to check if the user is a goat. Added control methods for the elevator talon.
+// Tyler Robbins - 1-23-15 - Added elevator methods and variables. Replaced SystemCheck contents with SmartDashboard calls. Fixed swugbruh.
+
+#define Autobots_Roll_Out TeleopInit
 
 #include "WPILib.h"
 
@@ -29,6 +32,8 @@ class Robot: public IterativeRobot
 	LiveWindow *lw;
 	Solenoid gearShift;
 	JoystickButton solButt;
+	JoystickButton elevatorUpButt;
+	JoystickButton elevatorDownButt;
 	// Camera *cam;
 	Encoder *enc;
 	AutonomousDrive *autodrive;
@@ -53,13 +58,15 @@ public:
 		stick(0),		// as they are declared above.
 		lw(NULL),
 		gearShift(0),
-		solButt(&stick,2)
+		solButt(&stick,2),
+		elevatorUpButt(&stick,5),
+		elevatorDownButt(&stick,3)
 	{
 		drive = new RobotDrive(frontLeft,backLeft,frontRight,backRight);
 		// cam = new Camera("10.44.13.10");
 		enc = new Encoder(8,9); // Needs real ports
 		elevatorMotor = new Talon(9);
-		autodrive = new AutonomousDrive(drive,15.0,(float)-1.0); // 2 seconds, -1 power
+		autodrive = new AutonomousDrive(drive,15.0,(float)-10); // 2 seconds, -1 power
 
 		drive->SetExpiration(0.1);
 		c->Start();
@@ -97,7 +104,7 @@ private:
 		Scheduler::GetInstance()->Run();
 	}
 
-	void TeleopInit()
+	void Autobots_Roll_Out()
 	{
 		//printf("Hello World 4413!");
 		//c->Stop();
@@ -117,15 +124,18 @@ private:
 		//driveMiddle.ArcadeDrive(stick);
 		//driveBack.ArcadeDrive(stick);
 		move();
-		// if(swugbruh(180))
-		//	moveElevator(0.5);
-		printf("Encoder: %f",enc->GetDistance());
+		if(swugbruh(180))
+			moveElevator(0.5);
+		// printf("Encoder: %f",enc->GetDistance());
 
 		if(solButt.Get() && false){
 			//toggleSolenoid(&gearShift);
 			setSolenoid(&gearShift,solButt.Get());
 		}
 		setSolenoid(&gearShift,solButt.Get());
+
+		SystemCheck();
+		ElevatorPeriodic();
 	}
 
 	void TestPeriodic()
@@ -165,10 +175,15 @@ private:
 	}
 
 	void SystemCheck(){
-		if(DriverStation::GetInstance()->GetBatteryVoltage()<=20){
-			printf("[WARN] - Battery voltage low.");
-			c->Stop();
-		}
+//		if(DriverStation::GetInstance()->GetBatteryVoltage()<=20){
+//			printf("[WARN] - Battery voltage low.");
+//			c->Stop();
+//		}
+		SmartDashboard::PutNumber("Encoder Distance",enc->GetDistance());
+		SmartDashboard::PutNumber("Encoder Rate",enc->GetRate());
+		SmartDashboard::PutNumber("Power Level",PowerDistributionPanel().GetTotalPower());
+		SmartDashboard::PutNumber("Temperature Level",PowerDistributionPanel().GetTemperature());
+		SmartDashboard::PutBoolean("Compressor",c->Enabled());
 	}
 
 	void toggleSolenoid(Solenoid *sol){
@@ -184,9 +199,28 @@ private:
 		elevatorMotor->Set(pwr);
 	}
 
+	void ElevatorUp(float pwr){
+		moveElevator(pwr/100);
+	}
+
+	void ElevatorDown(float pwr){
+		moveElevator(-pwr/100);
+	}
+
+	void ElevatorPeriodic(){
+		if(elevatorUpButt.Get())
+			ElevatorUp(30);
+		else
+			ElevatorUp(0);
+		if(elevatorDownButt.Get())
+			ElevatorDown(30);
+		else
+			ElevatorDown(0);
+	}
+
 	bool swugbruh(float value){
 		/*Checks if the encoder has gone past a certain value.*/
-		return value >= 0;
+		return enc->GetDistance() >= value;
 	}
 
 	bool IsUserAGoat(){
