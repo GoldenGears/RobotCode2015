@@ -8,13 +8,17 @@
 // Conlon Meek - 1-14-15 - Added individual Talon objects to pass to the RobotDrive classes.
 // Tyler Robbins - 1-22-15 - Removed useless include statements. Added an Elevator talon. Added an encoder. Added Autonomous code. Added a method to check if the user is a goat. Added control methods for the elevator talon.
 // Tyler Robbins - 1-23-15 - Added elevator methods and variables. Replaced SystemCheck contents with SmartDashboard calls. Fixed swugbruh.
+// Tyler Robbins - 1-25-15 - Added a Hardware object. Replaced all method calls to hardware related methods with references to the hardware object. Added more SystemCheck calls.
 
 #define Autobots_Roll_Out TeleopInit
+
+#include <math.h>
 
 #include "WPILib.h"
 
 #include "Camera.cpp"
 #include "HardwareMap.cpp"
+#include "Hardware.cpp"
 #include "AutonomousDrive.cpp"
 
 class Robot: public IterativeRobot
@@ -34,15 +38,18 @@ class Robot: public IterativeRobot
 	JoystickButton solButt;
 	JoystickButton elevatorUpButt;
 	JoystickButton elevatorDownButt;
+	JoystickButton elevatorGoToButt;
 	// Camera *cam;
 	Encoder *enc;
 	AutonomousDrive *autodrive;
+	Hardware *hw;
 	// double last_encoder_value = 0;
 	//Compressor *c;
 	//int autoLoopCounter;
 
 public:
 	Compressor *c = new Compressor(0);
+	const float ELEVATOR_DEADBAND = 100;
 	Robot() :
 		frontLeft(0),
 		frontRight(2),
@@ -60,13 +67,15 @@ public:
 		gearShift(0),
 		solButt(&stick,2),
 		elevatorUpButt(&stick,5),
-		elevatorDownButt(&stick,3)
+		elevatorDownButt(&stick,3),
+		elevatorGoToButt(&stick,1)
 	{
 		drive = new RobotDrive(frontLeft,backLeft,frontRight,backRight);
 		// cam = new Camera("10.44.13.10");
 		enc = new Encoder(8,9); // Needs real ports
 		elevatorMotor = new Talon(9);
 		autodrive = new AutonomousDrive(drive,15.0,(float)-10); // 2 seconds, -1 power
+		hw = new Hardware();
 
 		drive->SetExpiration(0.1);
 		c->Start();
@@ -88,6 +97,7 @@ private:
 		if(IsUserAGoat()){
 			printf("The user is a goat.\nTotes ma Goats!");
 		}
+		SystemCheck();
 	}
 
 	void AutonomousInit()
@@ -97,11 +107,13 @@ private:
 		printf("Starting autonomous mode at %f power for %f seconds",
 		 		autodrive->getPower(),autodrive->getSeconds());
 		autodrive->Start();
+		SystemCheck();
 	}
 
 	void AutonomousPeriodic()
 	{
 		Scheduler::GetInstance()->Run();
+		SystemCheck();
 	}
 
 	void Autobots_Roll_Out()
@@ -115,6 +127,7 @@ private:
 		//driveMiddle.SetInvertedMotor(RobotDrive::kFrontRightMotor,true);
 		printf((c->Enabled()?"Compressor On":"Compressor Off"));
 		printf("\n");
+		SystemCheck();
 	}
 
 	void TeleopPeriodic()
@@ -123,23 +136,29 @@ private:
 		//driveFront.ArcadeDrive(stick);
 		//driveMiddle.ArcadeDrive(stick);
 		//driveBack.ArcadeDrive(stick);
-		move();
-		if(swugbruh(180))
-			moveElevator(0.5);
+		hw->move(stick);
+//		if(swugbruh(180))
+//			moveElevator(0.5);
 		// printf("Encoder: %f",enc->GetDistance());
 
 		if(solButt.Get() && false){
 			//toggleSolenoid(&gearShift);
 			setSolenoid(&gearShift,solButt.Get());
 		}
-		setSolenoid(&gearShift,solButt.Get());
+//		setSolenoid(&gearShift,solButt.Get());
+		hw->setSolenoid(&gearShift,solButt.Get());
 
 		SystemCheck();
-		ElevatorPeriodic();
+//		ElevatorPeriodic();
+		hw->ElevatorPeriodic(elevatorUpButt.Get(),
+							 elevatorDownButt.Get(),
+							 elevatorGoToButt.Get());
+//		ElevatorGoToPeriodic(1000);
 	}
 
 	void TestPeriodic()
 	{
+		SystemCheck();
 		lw->Run();
 		// if (last_encoder_value != enc->GetPeriod()){
 			// printf("Period:%f\nDirection:%f\nDistance:%f\nRate:%d",
@@ -150,6 +169,11 @@ private:
 
 	void DisabledInit(){
 		//c->Start();
+		SystemCheck();
+	}
+
+	void DisabledPeriodic(){
+		SystemCheck();
 	}
 
 	void move(){
@@ -210,12 +234,30 @@ private:
 	void ElevatorPeriodic(){
 		if(elevatorUpButt.Get())
 			ElevatorUp(30);
-		else
-			ElevatorUp(0);
-		if(elevatorDownButt.Get())
+		else if(elevatorDownButt.Get())
 			ElevatorDown(30);
+		else if(elevatorGoToButt.Get())
+			ElevatorGoToPeriodic(1000);
 		else
 			ElevatorDown(0);
+	}
+
+	void ElevatorGoToPeriodic(float poscmd){
+		if(elevatorGoToButt.Get()){
+			float poserror = poscmd - enc->GetDistance();
+
+			if(std::abs(poserror)<(ELEVATOR_DEADBAND/2))
+				poserror = 0;
+
+			if(poserror > ELEVATOR_DEADBAND)
+				ElevatorUp(30);
+			else if(poserror < -ELEVATOR_DEADBAND)
+				ElevatorDown(30);
+			else
+				moveElevator(0);
+		}
+		else
+			moveElevator(0);
 	}
 
 	bool swugbruh(float value){
